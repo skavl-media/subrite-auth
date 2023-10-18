@@ -30,7 +30,11 @@ All parameters must be URL encoded.
       &code_challenge_method=S256
 
 It's strongly recommended that you use an OAuth library to generate this link.
+You need to use PKCE.
 
 If your application is using NextAuth.js, you can use the `@subrite/next-auth-provider` NPM module to generate this link.
 
 The `STATE` and `CODE_CHALLENGE` will be provied by your OAuth library.
+
+## Obtaining an access token
+
