@@ -32,9 +32,72 @@ All parameters must be URL encoded.
 It's strongly recommended that you use an OAuth library to generate this link.
 You need to use PKCE.
 
-If your application is using NextAuth.js, you can use the `@subrite/next-auth-provider` NPM module to generate this link.
-
 The `STATE` and `CODE_CHALLENGE` will be provied by your OAuth library.
 
-## Obtaining an access token
+## NextAuth.js
 
+If your application uses [NextAuth.js](https://next-auth.js.org/), you can use the `@subrite/next-auth-provider` NPM module.
+
+### Installation
+
+    npm install @subrite/next-auth-provider
+
+### NextAuth Configuration
+
+Configure NextAuth to use the Subrite provider:
+
+```typescript
+import { NextAuthOptions } from "next-auth";
+import Subrite from "@subrite/next-auth-provider";
+
+export const options: NextAuthOptions = {
+  providers: [
+    Subrite({
+      clientId: "your-client-id",
+      clientSecret: "your-client-secret",
+      subriteUrl: "your-subrite-url"
+    })
+  ],
+  callbacks: {
+    async jwt({ token, user }) {
+      return {
+        ...token,
+        accessToken: user.accessToken
+      };
+    },
+    async session({ session, token }) {
+      return { ...session, accessToken: token.accessToken };
+    }
+  }
+};
+```
+
+### TypeScript Configuration 
+
+(You can skip this step if you are not using TypeScript)
+
+NextAuth provides some built-in types for TypeScript that [can be augmented](https://next-auth.js.org/getting-started/typescript#module-augmentation) with custom properties.
+
+Add Subrite-specific properties:
+
+```typescript
+// next-auth.d.ts
+// Read more at: https://next-auth.js.org/getting-started/typescript#module-augmentation
+import { DefaultSession } from "next-auth";
+
+declare module "next-auth" {
+  interface User {
+    accessToken: string;
+    refreshToken: string;
+  }
+  interface Session {
+    user: DefaultSession["user"] & import("../src").SubriteProfile;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    accessToken: string;
+  }
+}
+```

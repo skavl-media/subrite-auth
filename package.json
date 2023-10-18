@@ -1,5 +1,5 @@
 {
-  "name": "@subrite/subrite-auth",
+  "name": "@subrite/next-auth-provider",
   "version": "0.0.1",
   "description": "NextAuth provider for Subrite",
   "author": {
@@ -38,6 +38,7 @@
     "next-auth": "^4.23.2"
   },
   "devDependencies": {
+    "@types/node": "20.8.7",
     "@typescript-eslint/eslint-plugin": "6.8.0",
     "@typescript-eslint/parser": "6.8.0",
     "eslint": "8.51.0",

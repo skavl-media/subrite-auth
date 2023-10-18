@@ -1,5 +1,5 @@
-import { TokenSet } from 'next-auth';
-import { OAuthConfig, OAuthUserConfig } from 'next-auth/providers';
+import { TokenSet } from "next-auth";
+import { OAuthConfig, OAuthUserConfig } from "next-auth/providers";
 
 export interface SubriteProfile {
   sub: string;
@@ -13,24 +13,32 @@ export type SubriteConfig = OAuthUserConfig<SubriteProfile> & {
   subriteUrl: string;
 };
 
-export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfile> {
+export default function Subrite(
+  config: SubriteConfig
+): OAuthConfig<SubriteProfile> {
   const { clientId, clientSecret, subriteUrl } = config;
   return {
-    id: 'subrite',
-    name: 'Subrite',
-    type: 'oauth',
-    version: '2.0',
-    wellKnown: new URL('/api/oidc/.well-known/openid-configuration', subriteUrl).href,
-    checks: ['pkce', 'state'],
+    id: "subrite",
+    name: "Subrite",
+    type: "oauth",
+    version: "2.0",
+    wellKnown: new URL("/api/oidc/.well-known/openid-configuration", subriteUrl)
+      .href,
+    checks: ["pkce", "state"],
     authorization: {
       params: {
-        scope: 'openid offline_access',
-      },
+        scope: "openid offline_access"
+      }
     },
     async profile(profile, tokens) {
       if (tokens.expires_at && tokens.expires_at < Date.now()) {
         const { refresh_token } = getTokens(tokens);
-        tokens = await refresh({ subriteUrl, clientId, clientSecret, refresh_token });
+        tokens = await refresh({
+          subriteUrl,
+          clientId,
+          clientSecret,
+          refresh_token
+        });
       }
 
       const { access_token, refresh_token } = getTokens(tokens);
@@ -40,20 +48,23 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
         email: profile.email,
         image: profile.image,
         accessToken: access_token,
-        refreshToken: refresh_token,
+        refreshToken: refresh_token
       };
     },
-    options: config,
+    options: config
   };
 }
 
-function getTokens(tokens: TokenSet): { refresh_token: string; access_token: string } {
+function getTokens(tokens: TokenSet): {
+  refresh_token: string;
+  access_token: string;
+} {
   const { access_token, refresh_token } = tokens;
   if (!access_token) {
-    throw new Error('No access_token');
+    throw new Error("No access_token");
   }
   if (!refresh_token) {
-    throw new Error('No refresh_token');
+    throw new Error("No refresh_token");
   }
   return { access_token, refresh_token };
 }
@@ -70,24 +81,24 @@ async function refresh({
   subriteUrl,
   clientId,
   clientSecret,
-  refresh_token,
+  refresh_token
 }: RefreshParams): Promise<TokenSet> {
-  const url = new URL('/api/oidc/token', subriteUrl);
+  const url = new URL("/api/oidc/token", subriteUrl);
   const form = new URLSearchParams();
-  form.append('grant_type', 'refresh_token');
-  form.append('client_id', clientId);
-  form.append('client_secret', clientSecret);
-  form.append('refresh_token', refresh_token);
+  form.append("grant_type", "refresh_token");
+  form.append("client_id", clientId);
+  form.append("client_secret", clientSecret);
+  form.append("refresh_token", refresh_token);
   const response = await fetch(url, {
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded"
     },
-    method: 'POST',
-    body: form,
+    method: "POST",
+    body: form
   });
 
   if (!response.ok) {
-    throw new Error('Could not refresh access token' + (await response.text()));
+    throw new Error("Could not refresh access token" + (await response.text()));
   }
 
   return response.json();
