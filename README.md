@@ -34,6 +34,28 @@ You need to use PKCE.
 
 The `STATE` and `CODE_CHALLENGE` will be provied by your OAuth library.
 
+## Logging out
+
+When you implement logout in your application, you must make sure to log the user out from Subrite as well as your application.
+
+You can log out from Subrite first, and then log out from your application, or vice versa.
+
+To log out from Subrite, you must redirect the user to the Subrite logout endpoint.
+The Subrite logout endpoint will then redirect back to the your application's configured `post_logout_redirect_uri`
+
+The following JavaScript code illustrates how to construct a logout URL for Subrite:
+
+```typescript
+// Create a URL object for the Subrite server's logout endpoint
+const subriteSignoutUrl = new URL('/api/oidc/session/end', subriteUrl);
+// Tell subrite what client we are signing out from
+subriteSignoutUrl.searchParams.append('client_id', clientId);
+// Tell subrite where to send the user agent after signing out.
+subriteSignoutUrl.searchParams.append('post_logout_redirect_uri', postLogoutRedirectUri);
+```
+
+The `postLogoutRedirectUri` must be one of the `post_logout_redirect_uri` values configured for your application in Subrite.
+
 ## NextAuth.js
 
 If your application uses [NextAuth.js](https://next-auth.js.org/), you can use the `@subrite/next-auth-provider` NPM module.
