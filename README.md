@@ -66,16 +66,28 @@ The `/logout` page where the browser is redirected to should clear the user's ap
 Below is an example that uses NextAuth.js:
 
 ```tsx
-import { signOut } from "next-auth/react"
-import { useEffect } from "react"
+import { signOut, useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function LogoutPage() {
+  const [error, setError] = useState<string>('')
+  const session = useSession()
+  const router = useRouter()
+
   useEffect(() => {
-    signOut({ callbackUrl: process.env.NEXT_PUBLIC_NEXTAUTH_URL })
-  })
+    if(session.status === "authenticated") {
+      signOut({callbackUrl: '/'}).catch((err) => setError(err.message))
+    } else {
+      router.push("/")
+      return
+    }
+  }, [session])
 
   return (
-    <pre>Signing out...</pre>
+    <>
+      {error ? <p>{error}</p> : <p>Signing out...</p>}
+    </>
   )
 }
 ```
