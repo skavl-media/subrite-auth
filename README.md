@@ -38,23 +38,47 @@ The `STATE` and `CODE_CHALLENGE` will be provied by your OAuth library.
 
 When you implement logout in your application, you must make sure to log the user out from Subrite as well as your application.
 
-You can log out from Subrite first, and then log out from your application, or vice versa.
+You should log out from Subrite first, and then log out from your application.
 
-To log out from Subrite, you must redirect the user to the Subrite logout endpoint.
+To log out from Subrite, the browser must visit the Subrite logout endpoint.
 The Subrite logout endpoint will then redirect back to the your application's configured `post_logout_redirect_uri`
 
 The following JavaScript code illustrates how to construct a logout URL for Subrite:
 
 ```typescript
-// Create a URL object for the Subrite server's logout endpoint
+// Construct a URL object for the Subrite sign out endpoint.
 const subriteSignoutUrl = new URL('/api/oidc/session/end', subriteUrl);
 // Tell subrite what client we are signing out from
 subriteSignoutUrl.searchParams.append('client_id', clientId);
-// Tell subrite where to send the user agent after signing out.
+// Tell subrite where to send the user agent after signing out (where we sign out from the application)
+const postLogoutRedirectUri = new URL('/logout', process.env.NEXT_PUBLIC_NEXTAUTH_URL!).href
 subriteSignoutUrl.searchParams.append('post_logout_redirect_uri', postLogoutRedirectUri);
 ```
 
 The `postLogoutRedirectUri` must be one of the `post_logout_redirect_uri` values configured for your application in Subrite.
+
+```tsx
+<!-- This link initiates the sign out flow -->
+<a href={subriteSignoutUrl.href}>Sign Out</a>
+```
+
+The `/logout` page where the browser is redirected to should clear the user's appplication session.
+Below is an example that uses NextAuth.js:
+
+```tsx
+import { signOut } from "next-auth/react"
+import { useEffect } from "react"
+
+export default function LogoutPage() {
+  useEffect(() => {
+    signOut({ callbackUrl: process.env.NEXT_PUBLIC_NEXTAUTH_URL })
+  })
+
+  return (
+    <pre>Signing out...</pre>
+  )
+}
+```
 
 ## NextAuth.js
 
