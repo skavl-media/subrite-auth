@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "description": "NextAuth provider for Subrite",
   "author": {
-    "name": "Skavl Media",
-    "email": "hi@skavl.no",
-    "url": "https://www.skavlmedia.no/"
+    "name": "Subrite",
+    "email": "post@subrite.no",
+    "url": "https://www.subrite.no"
   },
   "files": [
     "./dist"
