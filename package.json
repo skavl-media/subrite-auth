@@ -1,6 +1,6 @@
 {
   "name": "@subrite/next-auth-provider",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "NextAuth provider for Subrite",
   "author": {
     "name": "Subrite",
@@ -20,7 +20,7 @@
     }
   },
   "keywords": [
-    "nextauth",
+    "next-auth",
     "subrite",
     "nextjs"
   ],
@@ -32,10 +32,10 @@
     "lint-staged": "lint-staged",
     "format": "prettier-eslint '{src,test}/**/*.ts' --write"
   },
-  "repository": "openartmarket/supabase-live-table",
+  "repository": "skavl-media/subrite-auth",
   "license": "MIT",
   "peerDependencies": {
-    "next-auth": "^4.23.2"
+    "next-auth": "^4.23.x"
   },
   "devDependencies": {
     "@types/node": "20.8.7",
@@ -48,15 +48,8 @@
     "npm-check-updates": "16.14.6",
     "prettier": "3.0.3",
     "prettier-eslint-cli": "8.0.1",
-    "supabase": "1.106.1",
     "tsup": "7.2.0",
     "typescript": "5.2.2"
-  },
-  "prettier": {
-    "printWidth": 100,
-    "singleQuote": true,
-    "trailingComma": "all",
-    "arrowParens": "always"
   },
   "lint-staged": {
     "*.ts": [
