@@ -105,28 +105,39 @@ If your application uses [NextAuth.js](https://next-auth.js.org/), you can use t
 Configure NextAuth to use the Subrite provider:
 
 ```typescript
-import { NextAuthOptions } from "next-auth";
-import Subrite from "@subrite/next-auth-provider";
+import { NextAuthOptions } from 'next-auth';
+import Subrite, { refreshAccessToken, toSubriteJWT } from '@subrite/next-auth-provider';
+
+const subriteConfig = {
+  clientId: 'your-client-id',
+  clientSecret: 'your-client-secret',
+  subriteUrl: 'your-subrite-url',
+};
 
 export const options: NextAuthOptions = {
-  providers: [
-    Subrite({
-      clientId: "your-client-id",
-      clientSecret: "your-client-secret",
-      subriteUrl: "your-subrite-url"
-    })
-  ],
+  providers: [Subrite(subriteConfig)],
   callbacks: {
-    async jwt({ token, user }) {
-      return {
-        ...token,
-        accessToken: user.accessToken
-      };
+    async jwt({ token, user, account }) {
+      if (account && user) {
+        // Initial sign in
+        return {
+          ...token,
+          ...toSubriteJWT(account),
+          user,
+        };
+      }
+
+      // Return previous token if the access token has not expired yet
+      if (Date.now() < token.accessTokenExpires) {
+        return token;
+      }
+
+      return refreshAccessToken(token, subriteConfig);
     },
     async session({ session, token }) {
       return { ...session, accessToken: token.accessToken };
-    }
-  }
+    },
+  },
 };
 ```
 
@@ -141,21 +152,18 @@ Add Subrite-specific properties:
 ```typescript
 // next-auth.d.ts
 // Read more at: https://next-auth.js.org/getting-started/typescript#module-augmentation
-import { DefaultSession } from "next-auth";
+import { DefaultSession } from 'next-auth';
+import { SubriteJWT, SubriteProfile } from '@subrite/next-auth-provider';
 
-declare module "next-auth" {
-  interface User {
-    accessToken: string;
-    refreshToken: string;
-  }
+declare module 'next-auth' {
+  interface User extends SubriteJWT {}
+
   interface Session {
-    user: DefaultSession["user"] & import("../src").SubriteProfile;
+    user: DefaultSession['user'] & SubriteProfile;
   }
 }
 
-declare module "next-auth/jwt" {
-  interface JWT {
-    accessToken: string;
-  }
+declare module 'next-auth/jwt' {
+  interface JWT extends SubriteJWT {}
 }
 ```

@@ -35,27 +35,20 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
       },
     },
     async profile(profile, tokens): Promise<User & SubriteJWT> {
-      const { access_token, refresh_token, expires_at } = getTokens(tokens);
+      const subriteJWT = toSubriteJWT(tokens);
       return {
         id: profile.sub,
         name: profile.name,
         email: profile.email,
         image: profile.image,
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        // expires_at is in seconds, so we convert to milliseconds
-        accessTokenExpires: expires_at,
+        ...subriteJWT,
       };
     },
     options: config,
   };
 }
 
-function getTokens(tokens: TokenSet): {
-  refresh_token: string;
-  access_token: string;
-  expires_at: number;
-} {
+export function toSubriteJWT(tokens: TokenSet): SubriteJWT {
   const { access_token, refresh_token, expires_at } = tokens;
   if (!access_token) {
     throw new Error('No access_token');
@@ -66,7 +59,7 @@ function getTokens(tokens: TokenSet): {
   if (!expires_at) {
     throw new Error('No expires_at');
   }
-  return { access_token, refresh_token, expires_at };
+  return { accessToken: access_token, refreshToken: refresh_token, accessTokenExpires: expires_at };
 }
 
 type RefreshParams = {
@@ -105,12 +98,19 @@ export async function refreshAccessToken(
     console.error('No expires_in number in refreshedTokens', refreshedTokens);
     throw new Error('No expires_at');
   }
+  const accessToken = refreshedTokens.access_token;
+  if (!accessToken) {
+    console.error('No access_token in refreshedTokens', refreshedTokens);
+    throw new Error('No access_token');
+  }
 
   // The OIDC spec returns expires_in in seconds.
   const expiresInSeconds = refreshedTokens.expires_in;
-  const refreshedTokensWithExpiry: SubriteJWT = {
+  const refreshedTokensWithExpiry = {
     ...token,
+    accessToken: accessToken,
     accessTokenExpires: Date.now() + expiresInSeconds * 1000,
+    refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
   };
 
   return refreshedTokensWithExpiry;
