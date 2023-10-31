@@ -1,5 +1,5 @@
-import { TokenSet } from 'next-auth';
-import { OAuthConfig, OAuthUserConfig } from 'next-auth/providers';
+import { TokenSet } from "next-auth";
+import { OAuthConfig, OAuthUserConfig } from "next-auth/providers";
 
 export interface SubriteProfile {
   sub: string;
@@ -13,19 +13,22 @@ export type SubriteConfig = OAuthUserConfig<SubriteProfile> & {
   subriteUrl: string;
 };
 
-export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfile> {
+export default function Subrite(
+  config: SubriteConfig
+): OAuthConfig<SubriteProfile> {
   const { clientId, clientSecret, subriteUrl } = config;
   return {
-    id: 'subrite',
-    name: 'Subrite',
-    type: 'oauth',
-    version: '2.0',
-    wellKnown: new URL('/api/oidc/.well-known/openid-configuration', subriteUrl).href,
-    checks: ['pkce', 'state'],
+    id: "subrite",
+    name: "Subrite",
+    type: "oauth",
+    version: "2.0",
+    wellKnown: new URL("/api/oidc/.well-known/openid-configuration", subriteUrl)
+      .href,
+    checks: ["pkce", "state"],
     authorization: {
       params: {
-        scope: 'openid offline_access',
-      },
+        scope: "openid offline_access"
+      }
     },
     async profile(profile, tokens) {
       if (tokens.expires_at && tokens.expires_at < Date.now()) {
@@ -34,7 +37,7 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
           subriteUrl,
           clientId,
           clientSecret,
-          refresh_token,
+          refresh_token
         });
       }
 
@@ -45,10 +48,10 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
         email: profile.email,
         image: profile.image,
         accessToken: access_token,
-        refreshToken: refresh_token,
+        refreshToken: refresh_token
       };
     },
-    options: config,
+    options: config
   };
 }
 
@@ -58,10 +61,10 @@ function getTokens(tokens: TokenSet): {
 } {
   const { access_token, refresh_token } = tokens;
   if (!access_token) {
-    throw new Error('No access_token');
+    throw new Error("No access_token");
   }
   if (!refresh_token) {
-    throw new Error('No refresh_token');
+    throw new Error("No refresh_token");
   }
   return { access_token, refresh_token };
 }
@@ -78,24 +81,24 @@ export async function refreshAccessToken({
   subriteUrl,
   clientId,
   clientSecret,
-  refresh_token,
+  refresh_token
 }: RefreshParams): Promise<TokenSet> {
-  const url = new URL('/api/oidc/token', subriteUrl);
+  const url = new URL("/api/oidc/token", subriteUrl);
   const form = new URLSearchParams();
-  form.append('grant_type', 'refresh_token');
-  form.append('client_id', clientId);
-  form.append('client_secret', clientSecret);
-  form.append('refresh_token', refresh_token);
+  form.append("grant_type", "refresh_token");
+  form.append("client_id", clientId);
+  form.append("client_secret", clientSecret);
+  form.append("refresh_token", refresh_token);
   const response = await fetch(url, {
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded"
     },
-    method: 'POST',
-    body: form,
+    method: "POST",
+    body: form
   });
 
   if (!response.ok) {
-    throw new Error('Could not refresh access token' + (await response.text()));
+    throw new Error("Could not refresh access token" + (await response.text()));
   }
 
   return response.json();
@@ -104,12 +107,15 @@ export async function refreshAccessToken({
 export function generatePostSignOutUrl(
   subriteUrl: string | URL,
   clientId: string,
-  postLogoutRedirectUri: string,
+  postLogoutRedirectUri: string
 ) {
-  const subriteSignoutUrl = new URL('/api/oidc/session/end', subriteUrl);
+  const subriteSignoutUrl = new URL("/api/oidc/session/end", subriteUrl);
   //Tell subrite what client we are signing out from
-  subriteSignoutUrl.searchParams.append('client_id', clientId);
+  subriteSignoutUrl.searchParams.append("client_id", clientId);
   //Tell subrite where to send the user agent after signing out
-  subriteSignoutUrl.searchParams.append('post_logout_redirect_uri', postLogoutRedirectUri);
+  subriteSignoutUrl.searchParams.append(
+    "post_logout_redirect_uri",
+    postLogoutRedirectUri
+  );
   return subriteSignoutUrl.toString();
 }
