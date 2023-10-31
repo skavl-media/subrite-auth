@@ -1,4 +1,4 @@
-import { TokenSet } from "next-auth";
+import { TokenSet, User } from "next-auth";
 import { OAuthConfig, OAuthUserConfig } from "next-auth/providers";
 
 export interface SubriteProfile {
@@ -8,6 +8,13 @@ export interface SubriteProfile {
   image: string;
   accessToken: string;
   refreshToken: string;
+  accessTokenExpires: number;
+}
+
+export interface SubriteUser {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpires: number;
 }
 
 export type SubriteConfig = OAuthUserConfig<SubriteProfile> & {
@@ -31,7 +38,7 @@ export default function Subrite(
         scope: "openid offline_access"
       }
     },
-    async profile(profile, tokens) {
+    async profile(profile, tokens): Promise<User & SubriteUser> {
       if (tokens.expires_at && tokens.expires_at < Date.now()) {
         const { refresh_token } = getTokens(tokens);
         tokens = await refreshAccessToken({
@@ -42,14 +49,15 @@ export default function Subrite(
         });
       }
 
-      const { access_token, refresh_token } = getTokens(tokens);
+      const { access_token, refresh_token, expires_at } = getTokens(tokens);
       return {
         id: profile.sub,
         name: profile.name,
         email: profile.email,
         image: profile.image,
         accessToken: access_token,
-        refreshToken: refresh_token
+        refreshToken: refresh_token,
+        accessTokenExpires: expires_at
       };
     },
     options: config
@@ -59,15 +67,19 @@ export default function Subrite(
 function getTokens(tokens: TokenSet): {
   refresh_token: string;
   access_token: string;
+  expires_at: number;
 } {
-  const { access_token, refresh_token } = tokens;
+  const { access_token, refresh_token, expires_at } = tokens;
   if (!access_token) {
     throw new Error("No access_token");
   }
   if (!refresh_token) {
     throw new Error("No refresh_token");
   }
-  return { access_token, refresh_token };
+  if (!expires_at) {
+    throw new Error("No expires_at");
+  }
+  return { access_token, refresh_token, expires_at };
 }
 
 type RefreshParams = {
