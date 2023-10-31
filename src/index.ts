@@ -7,6 +7,7 @@ export interface SubriteProfile {
   email: string;
   image: string;
   accessToken: string;
+  refreshToken: string;
 }
 
 export type SubriteConfig = OAuthUserConfig<SubriteProfile> & {
@@ -34,7 +35,7 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
           subriteUrl,
           clientId,
           clientSecret,
-          refresh_token,
+          refreshToken: refresh_token,
         });
       }
 
@@ -70,7 +71,7 @@ type RefreshParams = {
   subriteUrl: string;
   clientId: string;
   clientSecret: string;
-  refresh_token: string;
+  refreshToken: string;
 };
 
 // https://next-auth.js.org/v3/tutorials/refresh-token-rotation#server-side
@@ -78,14 +79,14 @@ export async function refreshAccessToken({
   subriteUrl,
   clientId,
   clientSecret,
-  refresh_token,
+  refreshToken,
 }: RefreshParams): Promise<TokenSet> {
   const url = new URL('/api/oidc/token', subriteUrl);
   const form = new URLSearchParams();
   form.append('grant_type', 'refresh_token');
   form.append('client_id', clientId);
   form.append('client_secret', clientSecret);
-  form.append('refresh_token', refresh_token);
+  form.append('refresh_token', refreshToken);
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -94,22 +95,34 @@ export async function refreshAccessToken({
     body: form,
   });
 
+  const refreshedTokens: TokenSet = await response.json();
+
   if (!response.ok) {
-    throw new Error('Could not refresh access token' + (await response.text()));
+    throw refreshedTokens;
   }
 
-  return response.json();
+  if(typeof refreshedTokens.expires_in !== 'number') {
+    console.error('No expires_in number in refreshedTokens', refreshedTokens)
+    throw new Error('No expires_at');
+  }
+
+  const refreshedTokensWithExpiry: TokenSet = {
+    ...refreshedTokens,
+    expires_at: Date.now() + refreshedTokens.expires_in * 1000,
+  };
+
+  return refreshedTokensWithExpiry;
 }
 
 export function generatePostSignOutUrl(
   subriteUrl: string | URL,
   clientId: string,
   postLogoutRedirectUri: string,
-) {
+): string {
   const subriteSignoutUrl = new URL('/api/oidc/session/end', subriteUrl);
-  //Tell subrite what client we are signing out from
+  // Tell subrite what client we are signing out from
   subriteSignoutUrl.searchParams.append('client_id', clientId);
-  //Tell subrite where to send the user agent after signing out
+  // Tell subrite where to send the user agent after signing out
   subriteSignoutUrl.searchParams.append('post_logout_redirect_uri', postLogoutRedirectUri);
   return subriteSignoutUrl.toString();
 }
