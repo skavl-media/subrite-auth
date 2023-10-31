@@ -1,9 +1,11 @@
 import { TokenSet, User } from 'next-auth';
+import { JWT } from 'next-auth/jwt';
 import { OAuthConfig, OAuthUserConfig } from 'next-auth/providers';
 
 export interface SubriteJWT {
   accessToken: string;
   refreshToken: string;
+  // Milliseconds since epoch, which is easy to compare with Date.now()
   accessTokenExpires: number;
 }
 
@@ -19,7 +21,7 @@ export type SubriteConfig = OAuthUserConfig<SubriteProfile> & {
 };
 
 export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfile> {
-  const { clientId, clientSecret, subriteUrl } = config;
+  const { subriteUrl } = config;
   return {
     id: 'subrite',
     name: 'Subrite',
@@ -33,16 +35,6 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
       },
     },
     async profile(profile, tokens): Promise<User & SubriteJWT> {
-      if (tokens.expires_at && tokens.expires_at < Date.now()) {
-        const { refresh_token } = getTokens(tokens);
-        tokens = await refreshAccessToken({
-          subriteUrl,
-          clientId,
-          clientSecret,
-          refreshToken: refresh_token,
-        });
-      }
-
       const { access_token, refresh_token, expires_at } = getTokens(tokens);
       return {
         id: profile.sub,
@@ -51,6 +43,7 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
         image: profile.image,
         accessToken: access_token,
         refreshToken: refresh_token,
+        // expires_at is in seconds, so we convert to milliseconds
         accessTokenExpires: expires_at,
       };
     },
@@ -80,22 +73,20 @@ type RefreshParams = {
   subriteUrl: string;
   clientId: string;
   clientSecret: string;
-  refreshToken: string;
 };
 
 // https://next-auth.js.org/v3/tutorials/refresh-token-rotation#server-side
-export async function refreshAccessToken({
-  subriteUrl,
-  clientId,
-  clientSecret,
-  refreshToken,
-}: RefreshParams): Promise<TokenSet> {
+export async function refreshAccessToken(
+  token: JWT & SubriteJWT,
+  params: RefreshParams,
+): Promise<JWT & SubriteJWT> {
+  const { subriteUrl, clientId, clientSecret } = params;
   const url = new URL('/api/oidc/token', subriteUrl);
   const form = new URLSearchParams();
   form.append('grant_type', 'refresh_token');
   form.append('client_id', clientId);
   form.append('client_secret', clientSecret);
-  form.append('refresh_token', refreshToken);
+  form.append('refresh_token', token.refreshToken);
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -115,9 +106,11 @@ export async function refreshAccessToken({
     throw new Error('No expires_at');
   }
 
-  const refreshedTokensWithExpiry: TokenSet = {
-    ...refreshedTokens,
-    expires_at: Date.now() + refreshedTokens.expires_in * 1000,
+  // The OIDC spec returns expires_in in seconds.
+  const expiresInSeconds = refreshedTokens.expires_in;
+  const refreshedTokensWithExpiry: SubriteJWT = {
+    ...token,
+    accessTokenExpires: Date.now() + expiresInSeconds * 1000,
   };
 
   return refreshedTokensWithExpiry;
