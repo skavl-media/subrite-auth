@@ -59,7 +59,12 @@ export function toSubriteJWT(tokens: TokenSet): SubriteJWT {
   if (!expires_at) {
     throw new Error('No expires_at');
   }
-  return { accessToken: access_token, refreshToken: refresh_token, accessTokenExpires: expires_at };
+  return {
+    accessToken: access_token,
+    refreshToken: refresh_token,
+    // expires_at is in seconds since epoch
+    accessTokenExpires: expires_at * 1000,
+  };
 }
 
 type RefreshParams = {
@@ -104,7 +109,7 @@ export async function refreshAccessToken(
     throw new Error('No access_token');
   }
 
-  // The OIDC spec returns expires_in in seconds.
+  // The OIDC spec specifies expires_in in seconds.
   const expiresInSeconds = refreshedTokens.expires_in;
   const refreshedTokensWithExpiry = {
     ...token,
