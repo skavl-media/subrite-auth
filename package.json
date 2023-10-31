@@ -26,11 +26,11 @@
   ],
   "scripts": {
     "compile": "tsup --external next-auth --dts --format cjs,esm --clean src/index.ts",
-    "lint": "eslint {src,test}/**/*.ts --fix",
+    "lint": "eslint {src,example}/**/*.ts --fix",
     "upgrade": "npm-check-updates --upgrade",
     "prepare": "husky install",
     "lint-staged": "lint-staged",
-    "format": "prettier '{src,test}/**/*.ts' --write"
+    "format": "prettier '{src,example}/**/*.ts' --write"
   },
   "repository": "skavl-media/subrite-auth",
   "license": "MIT",

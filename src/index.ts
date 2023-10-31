@@ -1,20 +1,17 @@
 import { TokenSet, User } from 'next-auth';
 import { OAuthConfig, OAuthUserConfig } from 'next-auth/providers';
 
-export interface SubriteProfile {
-  sub: string;
-  name: string;
-  email: string;
-  image: string;
+export interface SubriteJWT {
   accessToken: string;
   refreshToken: string;
   accessTokenExpires: number;
 }
 
-export interface SubriteUser {
-  accessToken: string;
-  refreshToken: string;
-  accessTokenExpires: number;
+export interface SubriteProfile extends SubriteJWT {
+  sub: string;
+  name: string;
+  email: string;
+  image: string;
 }
 
 export type SubriteConfig = OAuthUserConfig<SubriteProfile> & {
@@ -35,7 +32,7 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
         scope: 'openid offline_access',
       },
     },
-    async profile(profile, tokens): Promise<User & SubriteUser> {
+    async profile(profile, tokens): Promise<User & SubriteJWT> {
       if (tokens.expires_at && tokens.expires_at < Date.now()) {
         const { refresh_token } = getTokens(tokens);
         tokens = await refreshAccessToken({
