@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## [0.1.0] - 2023-10-13
+## [0.1.0] - 2023-11-01
 ### Added
 - Added `toSubriteJWT` function
 - Changed the signature of `refreshAccessToken`
@@ -15,14 +15,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Improved TypeScript types
 
-## [0.0.2] - 2023-08-13
+## [0.0.2] - 2023-10-27
 
 ### Added
 - Added documentaion
 - Added `refreshAccessToken` function
 - Added `generatePostSignOutUrl` function
 
-## [0.0.1] - 2016-09-01
+## [0.0.1] - 2016-10-18
 ### Added
 - First release!
 
