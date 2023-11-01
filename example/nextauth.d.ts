@@ -1,18 +1,15 @@
 // Read more at: https://next-auth.js.org/getting-started/typescript#module-augmentation
 import { DefaultSession } from 'next-auth';
+import { SubriteJWT, SubriteProfile } from '../src';
 
 declare module 'next-auth' {
-  interface User {
-    accessToken: string;
-    refreshToken: string;
-  }
+  interface User extends SubriteJWT {}
+
   interface Session {
-    user: DefaultSession['user'] & import('../src').SubriteProfile;
+    user: DefaultSession['user'] & SubriteProfile;
   }
 }
 
 declare module 'next-auth/jwt' {
-  interface JWT {
-    accessToken: string;
-  }
+  interface JWT extends SubriteJWT {}
 }

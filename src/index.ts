@@ -1,12 +1,19 @@
-import { TokenSet } from 'next-auth';
+import { TokenSet, User } from 'next-auth';
+import { JWT } from 'next-auth/jwt';
 import { OAuthConfig, OAuthUserConfig } from 'next-auth/providers';
 
-export interface SubriteProfile {
+export interface SubriteJWT {
+  accessToken: string;
+  refreshToken: string;
+  // Milliseconds since epoch, which is easy to compare with Date.now()
+  accessTokenExpires: number;
+}
+
+export interface SubriteProfile extends SubriteJWT {
   sub: string;
   name: string;
   email: string;
   image: string;
-  accessToken: string;
 }
 
 export type SubriteConfig = OAuthUserConfig<SubriteProfile> & {
@@ -14,7 +21,7 @@ export type SubriteConfig = OAuthUserConfig<SubriteProfile> & {
 };
 
 export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfile> {
-  const { clientId, clientSecret, subriteUrl } = config;
+  const { subriteUrl } = config;
   return {
     id: 'subrite',
     name: 'Subrite',
@@ -27,89 +34,110 @@ export default function Subrite(config: SubriteConfig): OAuthConfig<SubriteProfi
         scope: 'openid offline_access',
       },
     },
-    async profile(profile, tokens) {
-      if (tokens.expires_at && tokens.expires_at < Date.now()) {
-        const { refresh_token } = getTokens(tokens);
-        tokens = await refreshAccessToken({
-          subriteUrl,
-          clientId,
-          clientSecret,
-          refresh_token,
-        });
-      }
-
-      const { access_token, refresh_token } = getTokens(tokens);
+    async profile(profile, tokens): Promise<User & SubriteJWT> {
+      const subriteJWT = toSubriteJWT(tokens);
       return {
         id: profile.sub,
         name: profile.name,
         email: profile.email,
         image: profile.image,
-        accessToken: access_token,
-        refreshToken: refresh_token,
+        ...subriteJWT,
       };
     },
     options: config,
   };
 }
 
-function getTokens(tokens: TokenSet): {
-  refresh_token: string;
-  access_token: string;
-} {
-  const { access_token, refresh_token } = tokens;
+export function toSubriteJWT(tokens: TokenSet): SubriteJWT {
+  const { access_token, refresh_token, expires_at } = tokens;
   if (!access_token) {
     throw new Error('No access_token');
   }
   if (!refresh_token) {
     throw new Error('No refresh_token');
   }
-  return { access_token, refresh_token };
+  if (!expires_at) {
+    throw new Error('No expires_at');
+  }
+  return {
+    accessToken: access_token,
+    refreshToken: refresh_token,
+    // expires_at is in seconds since epoch
+    accessTokenExpires: expires_at * 1000,
+  };
 }
 
 type RefreshParams = {
   subriteUrl: string;
   clientId: string;
   clientSecret: string;
-  refresh_token: string;
 };
 
 // https://next-auth.js.org/v3/tutorials/refresh-token-rotation#server-side
-export async function refreshAccessToken({
-  subriteUrl,
-  clientId,
-  clientSecret,
-  refresh_token,
-}: RefreshParams): Promise<TokenSet> {
-  const url = new URL('/api/oidc/token', subriteUrl);
-  const form = new URLSearchParams();
-  form.append('grant_type', 'refresh_token');
-  form.append('client_id', clientId);
-  form.append('client_secret', clientSecret);
-  form.append('refresh_token', refresh_token);
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    method: 'POST',
-    body: form,
-  });
+export async function refreshAccessToken(
+  token: JWT & SubriteJWT,
+  params: RefreshParams,
+): Promise<JWT & SubriteJWT> {
+  try {
+    const { subriteUrl, clientId, clientSecret } = params;
+    const url = new URL('/api/oidc/token', subriteUrl);
+    const form = new URLSearchParams();
+    form.append('grant_type', 'refresh_token');
+    form.append('client_id', clientId);
+    form.append('client_secret', clientSecret);
+    form.append('refresh_token', token.refreshToken);
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      method: 'POST',
+      body: form,
+    });
 
-  if (!response.ok) {
-    throw new Error('Could not refresh access token' + (await response.text()));
+    const refreshedTokens: TokenSet = await response.json();
+
+    if (!response.ok) {
+      throw refreshedTokens;
+    }
+
+    if (typeof refreshedTokens.expires_in !== 'number') {
+      throw new Error(
+        'No expires_in number in refreshedTokens: ' + JSON.stringify(refreshedTokens),
+      );
+    }
+    const accessToken = refreshedTokens.access_token;
+    if (!accessToken) {
+      throw new Error('No access_token in refreshedTokens: ' + JSON.stringify(refreshedTokens));
+    }
+
+    // The OIDC spec specifies expires_in in seconds.
+    const expiresInSeconds = refreshedTokens.expires_in;
+    const refreshedTokensWithExpiry = {
+      ...token,
+      accessToken: accessToken,
+      accessTokenExpires: Date.now() + expiresInSeconds * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
+    };
+
+    return refreshedTokensWithExpiry;
+  } catch (error) {
+    console.error('Error refreshing access token', error);
+    return {
+      ...token,
+      error: 'RefreshAccessTokenError',
+    };
   }
-
-  return response.json();
 }
 
 export function generatePostSignOutUrl(
   subriteUrl: string | URL,
   clientId: string,
   postLogoutRedirectUri: string,
-) {
+): string {
   const subriteSignoutUrl = new URL('/api/oidc/session/end', subriteUrl);
-  //Tell subrite what client we are signing out from
+  // Tell subrite what client we are signing out from
   subriteSignoutUrl.searchParams.append('client_id', clientId);
-  //Tell subrite where to send the user agent after signing out
+  // Tell subrite where to send the user agent after signing out
   subriteSignoutUrl.searchParams.append('post_logout_redirect_uri', postLogoutRedirectUri);
   return subriteSignoutUrl.toString();
 }
