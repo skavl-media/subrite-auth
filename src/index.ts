@@ -78,47 +78,55 @@ export async function refreshAccessToken(
   token: JWT & SubriteJWT,
   params: RefreshParams,
 ): Promise<JWT & SubriteJWT> {
-  const { subriteUrl, clientId, clientSecret } = params;
-  const url = new URL('/api/oidc/token', subriteUrl);
-  const form = new URLSearchParams();
-  form.append('grant_type', 'refresh_token');
-  form.append('client_id', clientId);
-  form.append('client_secret', clientSecret);
-  form.append('refresh_token', token.refreshToken);
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    method: 'POST',
-    body: form,
-  });
+  try {
+    const { subriteUrl, clientId, clientSecret } = params;
+    const url = new URL('/api/oidc/token', subriteUrl);
+    const form = new URLSearchParams();
+    form.append('grant_type', 'refresh_token');
+    form.append('client_id', clientId);
+    form.append('client_secret', clientSecret);
+    form.append('refresh_token', token.refreshToken);
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      method: 'POST',
+      body: form,
+    });
 
-  const refreshedTokens: TokenSet = await response.json();
+    const refreshedTokens: TokenSet = await response.json();
 
-  if (!response.ok) {
-    throw refreshedTokens;
+    if (!response.ok) {
+      throw refreshedTokens;
+    }
+
+    if (typeof refreshedTokens.expires_in !== 'number') {
+      throw new Error(
+        'No expires_in number in refreshedTokens: ' + JSON.stringify(refreshedTokens),
+      );
+    }
+    const accessToken = refreshedTokens.access_token;
+    if (!accessToken) {
+      throw new Error('No access_token in refreshedTokens: ' + JSON.stringify(refreshedTokens));
+    }
+
+    // The OIDC spec specifies expires_in in seconds.
+    const expiresInSeconds = refreshedTokens.expires_in;
+    const refreshedTokensWithExpiry = {
+      ...token,
+      accessToken: accessToken,
+      accessTokenExpires: Date.now() + expiresInSeconds * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
+    };
+
+    return refreshedTokensWithExpiry;
+  } catch (error) {
+    console.error('Error refreshing access token', error);
+    return {
+      ...token,
+      error: 'RefreshAccessTokenError',
+    };
   }
-
-  if (typeof refreshedTokens.expires_in !== 'number') {
-    console.error('No expires_in number in refreshedTokens', refreshedTokens);
-    throw new Error('No expires_at');
-  }
-  const accessToken = refreshedTokens.access_token;
-  if (!accessToken) {
-    console.error('No access_token in refreshedTokens', refreshedTokens);
-    throw new Error('No access_token');
-  }
-
-  // The OIDC spec specifies expires_in in seconds.
-  const expiresInSeconds = refreshedTokens.expires_in;
-  const refreshedTokensWithExpiry = {
-    ...token,
-    accessToken: accessToken,
-    accessTokenExpires: Date.now() + expiresInSeconds * 1000,
-    refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
-  };
-
-  return refreshedTokensWithExpiry;
 }
 
 export function generatePostSignOutUrl(
