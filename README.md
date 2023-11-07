@@ -167,3 +167,35 @@ declare module 'next-auth/jwt' {
   interface JWT extends SubriteJWT {}
 }
 ```
+
+## Refreshing the access token
+
+*Refreshing the access token is built into the `@subrite/next-auth-provider` module via the `refreshAccessToken` function.*
+
+If you are not using NextAuth, you will need to implement the refresh token flow yourself.
+
+The HTTP request below requests a new access token (as well as a new refresh token).
+
+```
+POST /api/oidc/token HTTP/1.1
+Host: {SUBRITE_HOST}
+Content-Type: application/x-www-form-urlencoded
+
+client_id={CLIENT_ID}&
+client_secret={CLIENT_SECRET}&
+refresh_token={REFRESH_TOKEN}&
+grant_type=refresh_token
+```
+
+Response:
+
+```json
+{
+  "access_token": "{NEW_ACCESS_TOKEN}",
+  "refresh_token": "{NEW_REFRESH_TOKEN}",
+  "expires_in": {SECONDS_UNTIL_EXPIRATION},
+}
+```
+
+For a more detailed explanation please refer to [The OAuth 2.0 Authorization Framework
+](https://www.rfc-editor.org/rfc/rfc6749.html) specification.
