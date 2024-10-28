@@ -1,6 +1,6 @@
 {
   "name": "@subrite/next-auth-provider",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "NextAuth provider for Subrite",
   "author": {
     "name": "Subrite",
@@ -30,7 +30,8 @@
     "upgrade": "npm-check-updates --upgrade",
     "prepare": "husky install",
     "lint-staged": "lint-staged",
-    "format": "prettier '{src,example}/**/*.ts' --write"
+    "format": "prettier '{src,example}/**/*.ts' --write",
+    "prepublish": "npm run lint && npm run compile"
   },
   "repository": "skavl-media/subrite-auth",
   "license": "MIT",
