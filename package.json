@@ -1,6 +1,6 @@
 {
   "name": "@subrite/next-auth-provider",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "NextAuth provider for Subrite",
   "author": {
     "name": "Subrite",
@@ -35,7 +35,7 @@
   "repository": "skavl-media/subrite-auth",
   "license": "MIT",
   "peerDependencies": {
-    "next-auth": "^4.23.x"
+    "next-auth": "^4.24.x"
   },
   "devDependencies": {
     "@types/node": "20.8.7",
